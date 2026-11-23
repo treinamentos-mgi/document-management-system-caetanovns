@@ -1,8 +1,7 @@
 const { randomUUID } = require('node:crypto');
-const fs = require('node:fs/promises');
 const path = require('node:path');
-const { storageDirectory } = require('../config');
 const documentRepository = require('../repositories/documentRepository');
+const documentFileRepository = require('../repositories/documentFileRepository');
 
 function toPublicDocument(document) {
   const { storedName, ...publicDocument } = document;
@@ -22,7 +21,7 @@ async function createDocument(file, owner) {
   try {
     documentRepository.save(document);
   } catch (error) {
-    await fs.unlink(file.path).catch(() => {});
+    await documentFileRepository.removeUploadedFile(file.path);
     throw error;
   }
 
@@ -39,10 +38,8 @@ async function findDocumentForDownload(id, owner) {
     return null;
   }
 
-  const filePath = path.join(storageDirectory, document.storedName);
-  try {
-    await fs.access(filePath);
-  } catch {
+  const filePath = await documentFileRepository.findStoredFile(document.storedName);
+  if (!filePath) {
     return null;
   }
 
